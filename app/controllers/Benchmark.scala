@@ -15,18 +15,16 @@ import play.api.Play.current // required for Akka.future
  */
 object Benchmark extends Controller {
 	
-	val sleepTime:Long = 500
-	
 	def fast = Action {
 	  Ok("Hi")
 	}
 	
 	def block = Action {
 	  val now = System.currentTimeMillis()
-	  
-	  Thread.sleep(sleepTime)
+	  val sleepFor:Long = 1000
+	  Thread.sleep(sleepFor)
 	    
-	  Ok("Done, blocked for: " + sleepTime + "ms")
+	  Ok("Done, blocked for: " + sleepFor + "ms")
 	}
 	
 	/**
@@ -37,13 +35,45 @@ object Benchmark extends Controller {
 	 */
 	
 	def async = Action {
-		Async {
-		  val p1 : concurrent.Promise[Int] = concurrent.Akka.future {
-		    Thread.sleep(sleepTime)
-		    1
+		val sleepFor:Long = 1000
+		Async {		  
+		  val p1 : concurrent.Promise[Long] = concurrent.Akka.future {
+		    // usually put a long running function here that returns a value
+		    // when it is done... 
+		    Thread.sleep(sleepFor) 
+		    sleepFor
+		    
+		    /* using Thread.sleep is bad, it is good to use the Actor system
+		     * maybe on a remote node to do the long processing operation ... 
+		     * mmm
+		     */
 		  }
 		  
-		  p1.map { _ => Ok("I async slept for: " + sleepTime + "ms") }
+		  p1.map { s => Ok("I async slept for: " + s + "ms") }
 		}
+	}
+	
+	/*
+	 * Instead of a long running function we use Actors, see the lib/Timers.scala
+	 * that will timeout in a specific amount of time and run our callback
+	 * function
+	 * 
+	 * using reemTime of 1000ms, we limit requests to 1/second :)
+	 * try bumping up the concurrency and it should be very concurrent and 
+	 * slow :D
+	 * 
+	 * try: ab -c 50 -n 100  http://localhost:9000/benchmark/async2
+	 * -- should take 2 seconds
+	 * 
+	 */
+	def async2 = Action {
+	  val redeemTime:Long = 1000 // ms
+	  Async {
+		  val prom = concurrent.Promise[Int]
+		  lib.Timers.in(redeemTime) {
+		    prom.redeem(1)
+		  }
+		  prom.map { _ => Ok("Reemed in: " + redeemTime + "ms") }
+	  }
 	}
 }
