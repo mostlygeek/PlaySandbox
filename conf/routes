@@ -14,5 +14,9 @@ GET     /benchmark/async2           controllers.Benchmark.async2
 # Loading stuff remotely
 GET     /remotes/twitter            controllers.RemoteWS.twitter
 
+# WebSocket Tests
+GET     /websocket/endpoint         controllers.WebSocket.endpoint
+
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
+
